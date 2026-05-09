@@ -817,9 +817,7 @@ self.addEventListener('push', e => {
 
 function registerSW() {
   if (!('serviceWorker' in navigator)) return;
-  const blob = new Blob([SW_CODE], { type: 'application/javascript' });
-  const url = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(url, { scope: './' }).catch(() => {});
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 
 // ── Init ──────────────────────────────────────────────────
