@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f11">
+<meta name="description" content="Track your projects and courses day by day">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DayTrack">
+<title>DayTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f11;
+  --bg2: #17171a;
+  --bg3: #1f1f24;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0f0f2;
+  --muted: #888890;
+  --accent: #7c6aff;
+  --accent2: #a78bfa;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --mono: 'DM Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overscroll-behavior: none;
+}
+/* --- Layout --- */
+.app { display: flex; flex-direction: column; min-height: 100vh; max-width: 480px; margin: 0 auto; }
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(15,15,17,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+.topbar-title span { color: var(--accent2); }
+.topbar-actions { display: flex; gap: 8px; }
+.icon-btn {
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); border-radius: var(--radius-sm);
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px; transition: border-color 0.15s, background 0.15s;
+}
+.icon-btn:hover { border-color: var(--border2); background: #28282e; }
+.content { flex: 1; padding: 20px; padding-bottom: 90px; }
+/* --- Bottom nav --- */
+.nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: rgba(15,15,17,0.95);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: space-around; padding: 10px 0 16px;
+  z-index: 50;
+}
+.nav-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; padding: 6px 16px; border-radius: var(--radius-sm);
+  transition: color 0.15s; font-family: var(--sans);
+}
+.nav-btn.active { color: var(--accent2); }
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn span { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; }
+/* --- Section heading --- */
+.sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.sec-title { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+/* --- Cards --- */
+.card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+.card:hover { border-color: var(--border2); }
+/* --- Item card --- */
+.item-card { cursor: pointer; }
+.item-header { display: flex; align-items: flex-start; gap: 12px; }
+.item-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.item-meta { flex: 1; min-width: 0; }
+.item-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.item-actions { display: flex; gap: 6px; }
+.chip {
+  font-size: 11px; font-weight: 600; font-family: var(--mono);
+  padding: 3px 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid transparent; transition: opacity 0.15s;
+}
+.chip:hover { opacity: 0.8; }
+.chip-done { background: rgba(52,211,153,0.15); color: var(--green); border-color: rgba(52,211,153,0.2); }
+.chip-partial { background: rgba(251,191,36,0.15); color: var(--amber); border-color: rgba(251,191,36,0.2); }
+.chip-skip { background: rgba(248,113,113,0.12); color: var(--red); border-color: rgba(248,113,113,0.2); }
+.chip-undo { background: var(--bg3); color: var(--muted); border-color: var(--border); }
+.item-streak { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.streak-bar { flex: 1; height: 3px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+.streak-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width 0.3s; }
+.streak-label { font-size: 11px; font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+/* --- Heatmap --- */
+.heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 10px; }
+.heatmap-cell {
+  aspect-ratio: 1; border-radius: 3px; background: var(--bg3);
+  cursor: default; transition: transform 0.1s;
+  position: relative;
+}
+.heatmap-cell.done { background: var(--green); opacity: 0.85; }
+.heatmap-cell.partial { background: var(--amber); opacity: 0.75; }
+.heatmap-cell.skipped { background: var(--red); opacity: 0.5; }
+.heatmap-cell.today { box-shadow: 0 0 0 2px var(--accent2); }
+.heatmap-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 4px; }
+.heatmap-day { font-size: 9px; text-align: center; color: var(--muted); font-family: var(--mono); }
+/* --- Stats row --- */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.stat-box { background: var(--bg3); border-radius: var(--radius-sm); padding: 10px; text-align: center; }
+.stat-num { font-size: 20px; font-weight: 800; font-family: var(--mono); }
+.stat-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+/* --- Today section --- */
+.today-date { font-size: 13px; font-family: var(--mono); color: var(--muted); margin-bottom: 18px; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-text { font-size: 14px; }
+/* --- Modal --- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100;
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  width: 100%; max-width: 480px; padding: 24px 20px 32px;
+  transform: translateY(100%); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.field input, .field select {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-size: 14px; font-family: var(--sans);
+  outline: none; transition: border-color 0.15s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field select option { background: var(--bg3); }
+.color-row { display: flex; gap: 8px; }
+.color-swatch {
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; transition: border-color 0.15s;
+}
+.color-swatch.sel { border-color: white; }
+.btn-row { display: flex; gap: 10px; margin-top: 20px; }
+.btn {
+  flex: 1; padding: 12px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 700; font-family: var(--sans);
+  cursor: pointer; border: none; transition: opacity 0.15s;
+}
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-ghost { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+/* --- Detail view --- */
+.back-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: none; border: none; color: var(--muted);
+  font-family: var(--sans); font-size: 13px; cursor: pointer;
+  margin-bottom: 16px; padding: 0;
+}
+.back-btn:hover { color: var(--text); }
+.detail-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.detail-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+.detail-name { font-size: 22px; font-weight: 800; }
+.detail-type { font-size: 12px; font-family: var(--mono); color: var(--muted); }
+.month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.month-label { font-size: 13px; font-weight: 700; }
+.month-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+/* --- Notif banner --- */
+.notif-banner {
+  background: rgba(124,106,255,0.12); border: 1px solid rgba(124,106,255,0.25);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; cursor: pointer;
+}
+.notif-banner span { font-size: 13px; }
+.notif-banner strong { color: var(--accent2); }
+/* --- Deadline badge --- */
+.deadline-badge { font-size: 11px; font-family: var(--mono); padding: 2px 7px; border-radius: 5px; }
+.deadline-soon { background: rgba(251,191,36,0.15); color: var(--amber); }
+.deadline-past { background: rgba(248,113,113,0.12); color: var(--red); }
+.deadline-ok { background: rgba(52,211,153,0.1); color: var(--green); }
+/* --- Animations --- */
+@keyframes pop { 0%{transform:scale(0.95);opacity:0} 100%{transform:scale(1);opacity:1} }
+.card { animation: pop 0.18s ease; }
+/* --- Settings --- */
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.setting-row:last-child { border-bottom: none; }
+.setting-label { font-size: 14px; font-weight: 600; }
+.setting-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.toggle { position: relative; width: 44px; height: 24px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-track { position: absolute; inset: 0; background: var(--bg3); border: 1px solid var(--border2); border-radius: 99px; cursor: pointer; transition: background 0.2s; }
+.toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+.toggle-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: white; border-radius: 50%; transition: left 0.2s; }
+.toggle input:checked ~ .toggle-thumb { left: 23px; }
+.time-input { background: var(--bg3); border: 1px solid var(--border2); color: var(--text); border-radius: 8px; padding: 6px 10px; font-family: var(--mono); font-size: 14px; outline: none; }
+.time-input:focus { border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-title">Day<span>Track</span></div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="notif-btn" title="Enable notifications">🔔</button>
+      <button class="icon-btn" id="add-btn" title="Add item">＋</button>
+    </div>
+  </div>
+
+  <div class="content" id="content"></div>
+
+  <nav class="nav">
+    <button class="nav-btn active" data-tab="today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Today</span>
+    </button>
+    <button class="nav-btn" data-tab="items">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1.5" fill="currentColor"/><circle cx="3" cy="12" r="1.5" fill="currentColor"/><circle cx="3" cy="18" r="1.5" fill="currentColor"/></svg>
+      <span>Items</span>
+    </button>
+    <button class="nav-btn" data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Add item</div>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="f-name" placeholder="e.g. Machine Learning Course">
+    </div>
+    <div class="field">
+      <label>Type</label>
+      <select id="f-type">
+        <option value="course">📚 Course</option>
+        <option value="project">🛠 Project</option>
+        <option value="habit">🔁 Habit</option>
+        <option value="goal">🎯 Goal</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Deadline (optional)</label>
+      <input type="date" id="f-deadline">
+    </div>
+    <div class="field">
+      <label>Color</label>
+      <div class="color-row" id="color-row"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+      <button class="btn btn-primary" id="modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DB ────────────────────────────────────────────────────
+const COLORS = ['#7c6aff','#34d399','#f87171','#fbbf24','#60a5fa','#f472b6','#a3e635','#fb923c'];
+let db, items = [], logs = [], currentTab = 'today', detailId = null;
+let editingId = null, selectedColor = COLORS[0];
+let notifTime = localStorage.getItem('notifTime') || '09:00';
+let notifEnabled = localStorage.getItem('notifEnabled') === '1';
+let viewMonth = new Date().getMonth(), viewYear = new Date().getFullYear();
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('daytrack', 2);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('items')) d.createObjectStore('items', {keyPath:'id'});
+      if (!d.objectStoreNames.contains('logs')) {
+        const ls = d.createObjectStore('logs', {keyPath:'id'});
+        ls.createIndex('itemDate','itemDate',{unique:true});
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(); };
+    req.onerror = rej;
+  });
+}
+
+function tx(store, mode='readonly') { return db.transaction(store, mode).objectStore(store); }
+
+async function loadAll() {
+  items = await getAll('items');
+  logs = await getAll('logs');
+}
+
+function getAll(store) {
+  return new Promise(res => {
+    const req = tx(store).getAll();
+    req.onsuccess = e => res(e.target.result);
+  });
+}
+
+function put(store, obj) {
+  return new Promise(res => { const r = tx(store,'readwrite').put(obj); r.onsuccess = res; });
+}
+
+function del(store, id) {
+  return new Promise(res => { const r = tx(store,'readwrite').delete(id); r.onsuccess = res; });
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+function dateStr(d) { return d.toISOString().slice(0,10); }
+
+function getLog(itemId, date) { return logs.find(l => l.itemId === itemId && l.date === date); }
+
+function itemStreak(item) {
+  let streak = 0;
+  const d = new Date(); d.setHours(0,0,0,0);
+  for (let i = 0; i < 365; i++) {
+    const ds = dateStr(d);
+    if (ds === todayStr()) { d.setDate(d.getDate()-1); continue; }
+    const log = getLog(item.id, ds);
+    if (log && log.status === 'done') { streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+
+function completionRate(item) {
+  const itemLogs = logs.filter(l => l.itemId === item.id);
+  if (!itemLogs.length) return 0;
+  const done = itemLogs.filter(l => l.status === 'done').length;
+  return Math.round((done / itemLogs.length) * 100);
+}
+
+function deadlineDays(item) {
+  if (!item.deadline) return null;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const dl = new Date(item.deadline + 'T00:00:00');
+  return Math.ceil((dl - now) / 86400000);
+}
+
+function typeEmoji(t) {
+  return {course:'📚',project:'🛠',habit:'🔁',goal:'🎯'}[t] || '📌';
+}
+
+// ── Notifications ─────────────────────────────────────────
+async function requestNotif() {
+  if (!('Notification' in window)) return alert('Notifications not supported on this browser.');
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    notifEnabled = true;
+    localStorage.setItem('notifEnabled','1');
+    scheduleNotif();
+    new Notification('DayTrack', { body: 'Notifications enabled! ✅', icon: '' });
+    render();
+  }
+}
+
+function scheduleNotif() {
+  if (!notifEnabled || Notification.permission !== 'granted') return;
+  const [h, m] = notifTime.split(':').map(Number);
+  const now = new Date();
+  const next = new Date(); next.setHours(h, m, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  const ms = next - now;
+  clearTimeout(window._notifTimer);
+  window._notifTimer = setTimeout(() => {
+    fireNotif();
+    scheduleNotif();
+  }, ms);
+}
+
+function fireNotif() {
+  if (!notifEnabled || Notification.permission !== 'granted') return;
+  const pending = items.filter(i => !getLog(i.id, todayStr()));
+  if (pending.length) {
+    new Notification('DayTrack – Daily Check-in ⏰', {
+      body: `${pending.length} item${pending.length>1?'s':''} waiting for today's mark.`,
+      tag: 'daily'
+    });
+  }
+  // Deadline alerts
+  items.forEach(item => {
+    const days = deadlineDays(item);
+    if (days === 3 || days === 1) {
+      new Notification(`⚠️ Deadline soon: ${item.name}`, {
+        body: `${days} day${days>1?'s':''} left!`,
+        tag: 'deadline-' + item.id
+      });
+    }
+  });
+}
+
+// ── Render ────────────────────────────────────────────────
+function render() {
+  if (detailId) { renderDetail(); return; }
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === currentTab));
+  const c = document.getElementById('content');
+  if (currentTab === 'today') renderToday(c);
+  else if (currentTab === 'items') renderItems(c);
+  else renderSettings(c);
+}
+
+function renderToday(c) {
+  const today = todayStr();
+  const now = new Date();
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dateLabel = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+
+  let html = `<div class="today-date">${dateLabel}</div>`;
+
+  if (!notifEnabled && Notification.permission !== 'granted') {
+    html += `<div class="notif-banner" id="enable-notif"><span>🔔 <strong>Enable notifications</strong> to get daily reminders</span></div>`;
+  }
+
+  const pending = items.filter(i => !getLog(i.id, today));
+  const done = items.filter(i => { const l = getLog(i.id, today); return l && l.status === 'done'; });
+  const partial = items.filter(i => { const l = getLog(i.id, today); return l && l.status === 'partial'; });
+  const skipped = items.filter(i => { const l = getLog(i.id, today); return l && l.status === 'skipped'; });
+
+  if (items.length === 0) {
+    html += `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No items yet.<br>Tap <strong>＋</strong> to add a project or course.</div></div>`;
+  } else {
+    const pct = items.length ? Math.round(((done.length + partial.length) / items.length) * 100) : 0;
+    html += `<div class="card" style="margin-bottom:18px;border-color:rgba(124,106,255,0.2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:700">Today's progress</span>
+        <span style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--accent2)">${pct}%</span>
+      </div>
+      <div style="height:6px;background:var(--bg3);border-radius:99px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:99px;transition:width 0.4s"></div>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:10px">
+        <span style="font-size:11px;color:var(--green);font-family:var(--mono)">✓ ${done.length} done</span>
+        <span style="font-size:11px;color:var(--amber);font-family:var(--mono)">◑ ${partial.length} partial</span>
+        <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">○ ${pending.length} pending</span>
+      </div>
+    </div>`;
+
+    if (pending.length) {
+      html += `<div class="sec-head"><span class="sec-title">Pending</span></div>`;
+      pending.forEach(item => { html += itemCard(item, today, false); });
+    }
+
+    if (done.length || partial.length || skipped.length) {
+      html += `<div class="sec-head" style="margin-top:20px"><span class="sec-title">Completed</span></div>`;
+      [...done, ...partial, ...skipped].forEach(item => { html += itemCard(item, today, true); });
+    }
+  }
+
+  c.innerHTML = html;
+  c.querySelectorAll('[data-log]').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const {item: itemId, status} = btn.dataset;
+      await setLog(itemId, today, status);
+    });
+  });
+  c.querySelectorAll('[data-open]').forEach(el => {
+    el.addEventListener('click', () => { detailId = el.dataset.open; viewMonth = new Date().getMonth(); viewYear = new Date().getFullYear(); render(); });
+  });
+  const nb = c.querySelector('#enable-notif');
+  if (nb) nb.addEventListener('click', requestNotif);
+}
+
+function itemCard(item, date, completed) {
+  const log = getLog(item.id, date);
+  const status = log ? log.status : null;
+  const streak = itemStreak(item);
+  const rate = completionRate(item);
+  const days = deadlineDays(item);
+
+  let deadlineHtml = '';
+  if (days !== null) {
+    let cls = 'deadline-ok', txt = `${days}d left`;
+    if (days < 0) { cls = 'deadline-past'; txt = 'overdue'; }
+    else if (days <= 3) { cls = 'deadline-soon'; txt = `${days}d left`; }
+    deadlineHtml = `<span class="deadline-badge ${cls}">${txt}</span>`;
+  }
+
+  let actions = '';
+  if (!status) {
+    actions = `<button class="chip chip-done" data-log data-item="${item.id}" data-status="done">Done</button>
+               <button class="chip chip-partial" data-log data-item="${item.id}" data-status="partial">Part</button>
+               <button class="chip chip-skip" data-log data-item="${item.id}" data-status="skipped">Skip</button>`;
+  } else {
+    const statusIcon = status === 'done' ? '✓' : status === 'partial' ? '◑' : '✕';
+    const statusClass = status === 'done' ? 'chip-done' : status === 'partial' ? 'chip-partial' : 'chip-skip';
+    actions = `<span class="chip ${statusClass}">${statusIcon}</span>
+               <button class="chip chip-undo" data-log data-item="${item.id}" data-status="undo">Undo</button>`;
+  }
+
+  return `<div class="card item-card" data-open="${item.id}" style="cursor:pointer">
+    <div class="item-header">
+      <div class="item-dot" style="background:${item.color}"></div>
+      <div class="item-meta">
+        <div class="item-name">${typeEmoji(item.type)} ${item.name}</div>
+        <div class="item-sub">${item.type}${streak > 0 ? ` · 🔥 ${streak}d streak` : ''}${deadlineHtml ? ' · ' : ''}${deadlineHtml}</div>
+      </div>
+      <div class="item-actions">${actions}</div>
+    </div>
+    <div class="item-streak">
+      <div class="streak-bar"><div class="streak-fill" style="width:${rate}%;background:${item.color}"></div></div>
+      <span class="streak-label">${rate}%</span>
+    </div>
+  </div>`;
+}
+
+async function setLog(itemId, date, status) {
+  if (status === 'undo') {
+    const existing = logs.find(l => l.itemId === itemId && l.date === date);
+    if (existing) {
+      await del('logs', existing.id);
+      logs = logs.filter(l => l.id !== existing.id);
+    }
+  } else {
+    const existing = logs.find(l => l.itemId === itemId && l.date === date);
+    const log = { id: itemId + '_' + date, itemId, date, status, itemDate: itemId + '_' + date };
+    if (existing) { Object.assign(existing, log); }
+    else { logs.push(log); }
+    await put('logs', log);
+  }
+  render();
+}
+
+function renderItems(c) {
+  let html = `<div class="sec-head"><span class="sec-title">All items (${items.length})</span></div>`;
+  if (!items.length) {
+    html += `<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">No items yet. Tap <strong>＋</strong> to add one.</div></div>`;
+  } else {
+    items.forEach(item => {
+      const streak = itemStreak(item);
+      const rate = completionRate(item);
+      const days = deadlineDays(item);
+      let deadlineHtml = '';
+      if (days !== null) {
+        let cls = 'deadline-ok', txt = `${days}d left`;
+        if (days < 0) { cls = 'deadline-past'; txt = 'overdue'; }
+        else if (days <= 3) { cls = 'deadline-soon'; txt = `${days}d`; }
+        deadlineHtml = `<span class="deadline-badge ${cls}">${txt}</span>`;
+      }
+      html += `<div class="card item-card" data-open="${item.id}">
+        <div class="item-header">
+          <div class="item-dot" style="background:${item.color}"></div>
+          <div class="item-meta">
+            <div class="item-name">${typeEmoji(item.type)} ${item.name}</div>
+            <div class="item-sub">${item.type}${streak>0?` · 🔥 ${streak}d`:''}${deadlineHtml?' · ':''}${deadlineHtml}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="chip chip-undo" data-edit="${item.id}" style="font-size:12px">Edit</button>
+            <button class="chip" data-delete="${item.id}" style="background:rgba(248,113,113,0.1);color:var(--red);border-color:rgba(248,113,113,0.2);font-size:12px">Del</button>
+          </div>
+        </div>
+        <div class="item-streak">
+          <div class="streak-bar"><div class="streak-fill" style="width:${rate}%;background:${item.color}"></div></div>
+          <span class="streak-label">${rate}% · ${logs.filter(l=>l.itemId===item.id).length} days logged</span>
+        </div>
+      </div>`;
+    });
+  }
+  c.innerHTML = html;
+  c.querySelectorAll('[data-open]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('[data-edit]') || e.target.closest('[data-delete]')) return;
+      detailId = el.dataset.open; viewMonth = new Date().getMonth(); viewYear = new Date().getFullYear(); render();
+    });
+  });
+  c.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); openModal(btn.dataset.edit); });
+  });
+  c.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm('Delete this item and all its logs?')) return;
+      await del('items', btn.dataset.delete);
+      logs = logs.filter(l => l.itemId !== btn.dataset.delete);
+      for (const l of logs.filter(l => l.itemId === btn.dataset.delete)) await del('logs', l.id);
+      items = items.filter(i => i.id !== btn.dataset.delete);
+      render();
+    });
+  });
+}
+
+function renderDetail() {
+  const item = items.find(i => i.id === detailId);
+  if (!item) { detailId = null; render(); return; }
+  const c = document.getElementById('content');
+  const streak = itemStreak(item);
+  const rate = completionRate(item);
+  const total = logs.filter(l => l.itemId === item.id).length;
+  const doneCount = logs.filter(l => l.itemId === item.id && l.status === 'done').length;
+
+  // Build heatmap for current month
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const lastDay = new Date(viewYear, viewMonth + 1, 0);
+  const startOffset = firstDay.getDay();
+  const cells = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const ds = `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const log = getLog(item.id, ds);
+    cells.push({ d, ds, status: log ? log.status : null });
+  }
+
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const days = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+  let heatCells = cells.map(cell => {
+    if (!cell) return `<div></div>`;
+    const isToday = cell.ds === todayStr();
+    const cls = [cell.status || '', isToday ? 'today' : ''].filter(Boolean).join(' ');
+    const title = `${cell.d} ${months[viewMonth]}: ${cell.status || 'no log'}`;
+    return `<div class="heatmap-cell ${cls}" title="${title}" data-logcell="${cell.ds}"></div>`;
+  }).join('');
+
+  let dayLabels = days.map(d => `<div class="heatmap-day">${d}</div>`).join('');
+
+  c.innerHTML = `
+    <button class="back-btn" id="back-btn">← Back</button>
+    <div class="detail-header">
+      <div class="detail-dot" style="background:${item.color}"></div>
+      <div>
+        <div class="detail-name">${item.name}</div>
+        <div class="detail-type">${typeEmoji(item.type)} ${item.type}${item.deadline ? ' · deadline ' + item.deadline : ''}</div>
+      </div>
+    </div>
+    <div class="stats-row" style="margin-bottom:20px">
+      <div class="stat-box"><div class="stat-num" style="color:var(--accent2)">${streak}</div><div class="stat-label">Current streak</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--green)">${rate}%</div><div class="stat-label">Completion</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--blue)">${doneCount}</div><div class="stat-label">Days done</div></div>
+    </div>
+    <div class="card">
+      <div class="month-nav">
+        <button class="month-btn" id="prev-month">‹</button>
+        <span class="month-label">${months[viewMonth]} ${viewYear}</span>
+        <button class="month-btn" id="next-month">›</button>
+      </div>
+      <div class="heatmap-days">${dayLabels}</div>
+      <div class="heatmap">${heatCells}</div>
+      <div style="display:flex;gap:12px;margin-top:12px">
+        <span style="font-size:11px;color:var(--green);font-family:var(--mono)">■ done</span>
+        <span style="font-size:11px;color:var(--amber);font-family:var(--mono)">■ partial</span>
+        <span style="font-size:11px;color:var(--red);font-family:var(--mono)">■ skipped</span>
+        <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">□ none</span>
+      </div>
+    </div>
+    <div class="sec-head" style="margin-top:20px"><span class="sec-title">Log a day</span></div>
+    <div class="card">
+      <div class="field" style="margin-bottom:10px"><label>Date</label><input type="date" id="log-date" value="${todayStr()}" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:14px;outline:none;width:100%"></div>
+      <div style="display:flex;gap:8px">
+        <button class="chip chip-done" data-logbtn="done" style="flex:1;text-align:center;padding:8px">✓ Done</button>
+        <button class="chip chip-partial" data-logbtn="partial" style="flex:1;text-align:center;padding:8px">◑ Partial</button>
+        <button class="chip chip-skip" data-logbtn="skipped" style="flex:1;text-align:center;padding:8px">✕ Skip</button>
+        <button class="chip chip-undo" data-logbtn="undo" style="flex:1;text-align:center;padding:8px">Undo</button>
+      </div>
+    </div>`;
+
+  c.querySelector('#back-btn').addEventListener('click', () => { detailId = null; render(); });
+  c.querySelector('#prev-month').addEventListener('click', () => {
+    viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } renderDetail();
+  });
+  c.querySelector('#next-month').addEventListener('click', () => {
+    viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } renderDetail();
+  });
+  c.querySelectorAll('[data-logbtn]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const date = c.querySelector('#log-date').value;
+      if (!date) return;
+      await setLog(item.id, date, btn.dataset.logbtn);
+      renderDetail();
+    });
+  });
+}
+
+function renderSettings(c) {
+  c.innerHTML = `
+    <div class="sec-head"><span class="sec-title">Notifications</span></div>
+    <div class="card">
+      <div class="setting-row">
+        <div><div class="setting-label">Daily reminder</div><div class="setting-sub">Get nudged to mark your items</div></div>
+        <label class="toggle"><input type="checkbox" id="notif-toggle" ${notifEnabled?'checked':''}><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Reminder time</div><div class="setting-sub">What time to send the daily alert</div></div>
+        <input class="time-input" type="time" id="notif-time" value="${notifTime}">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Permission status</div><div class="setting-sub">Browser notification permission</div></div>
+        <span style="font-size:12px;font-family:var(--mono);color:${Notification.permission==='granted'?'var(--green)':'var(--amber)'}">${Notification.permission}</span>
+      </div>
+    </div>
+    <div class="sec-head" style="margin-top:20px"><span class="sec-title">Data</span></div>
+    <div class="card">
+      <div class="setting-row">
+        <div><div class="setting-label">Total items</div></div>
+        <span style="font-family:var(--mono);font-size:14px">${items.length}</span>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Total logs</div></div>
+        <span style="font-family:var(--mono);font-size:14px">${logs.length}</span>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Test notification</div><div class="setting-sub">Fire a test alert now</div></div>
+        <button class="chip chip-done" id="test-notif">Send</button>
+      </div>
+    </div>
+    <div style="margin-top:24px;text-align:center;font-size:12px;color:var(--muted);font-family:var(--mono)">DayTrack — all data stored locally</div>`;
+
+  c.querySelector('#notif-toggle').addEventListener('change', async e => {
+    if (e.target.checked) { await requestNotif(); }
+    else { notifEnabled = false; localStorage.setItem('notifEnabled','0'); render(); }
+  });
+  c.querySelector('#notif-time').addEventListener('change', e => {
+    notifTime = e.target.value;
+    localStorage.setItem('notifTime', notifTime);
+    scheduleNotif();
+  });
+  c.querySelector('#test-notif').addEventListener('click', () => {
+    if (Notification.permission !== 'granted') { requestNotif(); return; }
+    new Notification('DayTrack test 🔔', { body: 'Notifications are working!' });
+  });
+}
+
+// ── Modal ─────────────────────────────────────────────────
+function buildColorRow() {
+  const row = document.getElementById('color-row');
+  row.innerHTML = COLORS.map(c => `<div class="color-swatch${c===selectedColor?' sel':''}" data-c="${c}" style="background:${c}"></div>`).join('');
+  row.querySelectorAll('.color-swatch').forEach(s => {
+    s.addEventListener('click', () => { selectedColor = s.dataset.c; buildColorRow(); });
+  });
+}
+
+function openModal(editId = null) {
+  editingId = editId;
+  const overlay = document.getElementById('modal-overlay');
+  document.getElementById('modal-title').textContent = editId ? 'Edit item' : 'Add item';
+  if (editId) {
+    const item = items.find(i => i.id === editId);
+    document.getElementById('f-name').value = item.name;
+    document.getElementById('f-type').value = item.type;
+    document.getElementById('f-deadline').value = item.deadline || '';
+    selectedColor = item.color;
+  } else {
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-type').value = 'course';
+    document.getElementById('f-deadline').value = '';
+    selectedColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+  }
+  buildColorRow();
+  overlay.classList.add('open');
+  document.getElementById('f-name').focus();
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+document.getElementById('add-btn').addEventListener('click', () => openModal());
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+document.getElementById('modal-save').addEventListener('click', async () => {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) return document.getElementById('f-name').focus();
+  const item = {
+    id: editingId || Date.now().toString(36) + Math.random().toString(36).slice(2),
+    name,
+    type: document.getElementById('f-type').value,
+    deadline: document.getElementById('f-deadline').value || null,
+    color: selectedColor,
+    createdAt: editingId ? (items.find(i=>i.id===editingId)||{}).createdAt : Date.now()
+  };
+  await put('items', item);
+  if (editingId) { const idx = items.findIndex(i=>i.id===editingId); if (idx>=0) items[idx]=item; else items.push(item); }
+  else items.push(item);
+  closeModal();
+  render();
+});
+
+// ── Nav ───────────────────────────────────────────────────
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => { currentTab = btn.dataset.tab; detailId = null; render(); });
+});
+document.getElementById('notif-btn').addEventListener('click', requestNotif);
+
+// ── Service Worker ────────────────────────────────────────
+const SW_CODE = `
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+self.addEventListener('push', e => {
+  const data = e.data ? e.data.json() : {};
+  self.registration.showNotification(data.title || 'DayTrack', { body: data.body || '' });
+});
+`;
+
+function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  const blob = new Blob([SW_CODE], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url, { scope: './' }).catch(() => {});
+}
+
+// ── Init ──────────────────────────────────────────────────
+(async () => {
+  await openDB();
+  await loadAll();
+  registerSW();
+  scheduleNotif();
+  render();
+})();
+</script>
+
+<!-- PWA Manifest injected inline -->
+<script>
+(function() {
+  const manifest = {
+    name: 'DayTrack',
+    short_name: 'DayTrack',
+    description: 'Track projects and courses day by day',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#0f0f11',
+    theme_color: '#0f0f11',
+    icons: [
+      { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="%230f0f11"/><text x="96" y="130" font-size="110" text-anchor="middle">📋</text></svg>', sizes: '192x192', type: 'image/svg+xml' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const link = document.createElement('link');
+  link.rel = 'manifest'; link.href = URL.createObjectURL(blob);
+  document.head.appendChild(link);
+})();
+</script>
+</body>
+</html>
