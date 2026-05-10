@@ -271,6 +271,24 @@ body {
       <input type="date" id="f-deadline">
     </div>
     <div class="field">
+      <label>🔔 Daily reminder time (optional)</label>
+      <input type="time" id="f-reminder" placeholder="e.g. 08:00">
+    </div>
+    <div class="field">
+      <label>Repeat reminder</label>
+      <select id="f-repeat">
+        <option value="none">No repeat</option>
+        <option value="daily">Every day</option>
+        <option value="weekdays">Weekdays only (Mon–Fri)</option>
+        <option value="weekends">Weekends only (Sat–Sun)</option>
+        <option value="custom">Custom interval</option>
+      </select>
+    </div>
+    <div class="field" id="f-interval-wrap" style="display:none">
+      <label>Repeat every N days</label>
+      <input type="number" id="f-interval" min="1" max="30" value="2" placeholder="e.g. 2">
+    </div>
+    <div class="field">
       <label>Color</label>
       <div class="color-row" id="color-row"></div>
     </div>
@@ -519,7 +537,7 @@ function itemCard(item, date, completed) {
       <div class="item-dot" style="background:${item.color}"></div>
       <div class="item-meta">
         <div class="item-name">${typeEmoji(item.type)} ${item.name}</div>
-        <div class="item-sub">${item.type}${streak > 0 ? ` · 🔥 ${streak}d streak` : ''}${deadlineHtml ? ' · ' : ''}${deadlineHtml}</div>
+        <div class="item-sub">${item.type}${streak > 0 ? ` · 🔥 ${streak}d streak` : ''}${item.reminderTime ? ` · 🔔 ${item.reminderTime}` : ''}${deadlineHtml ? ' · ' : ''}${deadlineHtml}</div>
       </div>
       <div class="item-actions">${actions}</div>
     </div>
@@ -745,6 +763,57 @@ function renderSettings(c) {
   });
 }
 
+// ── Per-item notification scheduling ─────────────────────
+const itemTimers = {};
+
+function shouldFireToday(item) {
+  if (!item.repeat || item.repeat === 'none') return true; // fire once regardless
+  const dow = new Date().getDay(); // 0=Sun,6=Sat
+  if (item.repeat === 'daily') return true;
+  if (item.repeat === 'weekdays') return dow >= 1 && dow <= 5;
+  if (item.repeat === 'weekends') return dow === 0 || dow === 6;
+  if (item.repeat === 'custom') {
+    const start = new Date(item.createdAt);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diffDays = Math.floor((today - start) / 86400000);
+    return diffDays % (item.repeatInterval || 1) === 0;
+  }
+  return true;
+}
+
+function scheduleItemNotif(item) {
+  if (!item.reminderTime || !notifEnabled || Notification.permission !== 'granted') return;
+  if (itemTimers[item.id]) clearTimeout(itemTimers[item.id]);
+
+  const [h, m] = item.reminderTime.split(':').map(Number);
+  const now = new Date();
+  const next = new Date(); next.setHours(h, m, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  const ms = next - now;
+
+  itemTimers[item.id] = setTimeout(() => {
+    if (shouldFireToday(item)) {
+      const alreadyDone = getLog(item.id, todayStr());
+      if (!alreadyDone) {
+        new Notification(`⏰ ${item.name}`, {
+          body: `Time to work on your ${item.type}! Mark it when done.`,
+          tag: 'item-' + item.id
+        });
+      }
+    }
+    scheduleItemNotif(item); // reschedule for next day
+  }, ms);
+}
+
+function scheduleAllItemNotifs() {
+  items.forEach(scheduleItemNotif);
+}
+
+function toggleIntervalField() {
+  const val = document.getElementById('f-repeat').value;
+  document.getElementById('f-interval-wrap').style.display = val === 'custom' ? 'block' : 'none';
+}
+
 // ── Modal ─────────────────────────────────────────────────
 function buildColorRow() {
   const row = document.getElementById('color-row');
@@ -763,13 +832,20 @@ function openModal(editId = null) {
     document.getElementById('f-name').value = item.name;
     document.getElementById('f-type').value = item.type;
     document.getElementById('f-deadline').value = item.deadline || '';
+    document.getElementById('f-reminder').value = item.reminderTime || '';
+    document.getElementById('f-repeat').value = item.repeat || 'none';
+    document.getElementById('f-interval').value = item.repeatInterval || 2;
     selectedColor = item.color;
   } else {
     document.getElementById('f-name').value = '';
     document.getElementById('f-type').value = 'course';
     document.getElementById('f-deadline').value = '';
+    document.getElementById('f-reminder').value = '';
+    document.getElementById('f-repeat').value = 'none';
+    document.getElementById('f-interval').value = 2;
     selectedColor = COLORS[Math.floor(Math.random() * COLORS.length)];
   }
+  toggleIntervalField();
   buildColorRow();
   overlay.classList.add('open');
   document.getElementById('f-name').focus();
@@ -784,20 +860,27 @@ document.getElementById('modal-overlay').addEventListener('click', e => { if (e.
 document.getElementById('modal-save').addEventListener('click', async () => {
   const name = document.getElementById('f-name').value.trim();
   if (!name) return document.getElementById('f-name').focus();
+  const repeat = document.getElementById('f-repeat').value;
   const item = {
     id: editingId || Date.now().toString(36) + Math.random().toString(36).slice(2),
     name,
     type: document.getElementById('f-type').value,
     deadline: document.getElementById('f-deadline').value || null,
+    reminderTime: document.getElementById('f-reminder').value || null,
+    repeat: repeat,
+    repeatInterval: repeat === 'custom' ? parseInt(document.getElementById('f-interval').value) || 2 : null,
     color: selectedColor,
     createdAt: editingId ? (items.find(i=>i.id===editingId)||{}).createdAt : Date.now()
   };
   await put('items', item);
   if (editingId) { const idx = items.findIndex(i=>i.id===editingId); if (idx>=0) items[idx]=item; else items.push(item); }
   else items.push(item);
+  scheduleAllItemNotifs();
   closeModal();
   render();
 });
+
+document.getElementById('f-repeat').addEventListener('change', toggleIntervalField);
 
 // ── Nav ───────────────────────────────────────────────────
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -817,7 +900,9 @@ self.addEventListener('push', e => {
 
 function registerSW() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  const blob = new Blob([SW_CODE], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url, { scope: './' }).catch(() => {});
 }
 
 // ── Init ──────────────────────────────────────────────────
@@ -826,6 +911,7 @@ function registerSW() {
   await loadAll();
   registerSW();
   scheduleNotif();
+  scheduleAllItemNotifs();
   render();
 })();
 </script>
@@ -853,4 +939,3 @@ function registerSW() {
 </script>
 </body>
 </html>
-<!-- CHAMA -->
